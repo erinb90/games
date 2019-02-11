@@ -1,3 +1,5 @@
+# Word list from https://boardgamegeek.com/filepage/136292/codenames-word-list
+
 import random
 import time
 
@@ -61,8 +63,8 @@ class Codenames:
             print(colours_2d[i])
 
     def guess(self, guess):
-        colour = self.colours[self.board.index(guess.capitalize())]
-        self.board[self.board.index(guess.capitalize())] = colour
+        colour = self.colours[self.board.index(guess.title())]
+        self.board[self.board.index(guess.title())] = colour
         if colour == "ASSASSIN":
             assassinate(self.red_turn)
             self.end_game()
@@ -113,15 +115,24 @@ def assassinate(red_team):
         print("You hit the assassin! Red team wins!")
 
 
+def switch_modes(reader, delay=None):
+    if delay is None:
+        delay = 5
+    print("Switching to %s mode in %s seconds." % ("Reader" if reader else "Guesser", str(delay)))
+    time.sleep(5)
+    for i in range(0, 100):
+        print(".")
+
+
 game = Codenames()
 
 print("Welcome to Codenames!")
-print()
 
-reader_red = input("Enter the reader's name for the Red team: ")
+reader_red = input("Enter the reader's name for the Red team (Red will go first): ")
 reader_blue = input("Enter the reader's name for the Blue team: ")
 
-print()
+# Switch to Reader mode
+switch_modes(True)
 
 while game.in_progress:
     gameover = False
@@ -132,23 +143,38 @@ while game.in_progress:
     print("Here are the colours:")
     game.print_colours()
 
-    clue, number = input("Please enter a clue and the number of words it corresponds to (e.g. Dog 2): ").split()
+    while True:
+        try:
+            clue, number = input("Please enter a one-word clue and the number of words it corresponds to (e.g. Dog 2): ").split()
+            number = int(number)
+            if clue in game.board:
+                print("The clue can't be a word on the board!")
+            if number < 1 or number > 25:
+                print("Invalid number.")
+            else:
+                break
+        except ValueError:
+            print("Invalid input.")
+
     if game.red_turn:
         game.red_clues.append((clue, number))
     else:
         game.blue_clues.append((clue, number))
 
-    for i in range(0, 100):
-        print(".")
+    # Switch to Guesser mode
+    switch_modes(False)
 
     print("%s (%s)'s team! Here are the clues so far:" % (reader_red if game.red_turn else reader_blue, "Red" if game.red_turn else "Blue"))
     game.show_clues()
     print()
     print("Here is the board:")
     game.print_board()
-    for i in range(0, int(number)+1):
+
+    # Guesser can keep guessing as long as they guess correctly, and is allowed one bonus guess beyond the number
+    # the reader specified (e.g. to guess something from a previous clue they didn't get)
+    for i in range(0, number+1):
         guess = input("Please guess word " + str(i+1) + ": ")
-        while guess.capitalize() not in game.board:
+        while guess.title() not in game.board:
             guess = input("That word isn't on the board! Guess again: ")
         correct, actual_colour = game.guess(guess)
         if correct:
@@ -156,13 +182,14 @@ while game.in_progress:
                 gameover = True
                 break
             if (i+1) != int(number)+1:
-                guess_again = input("Correct! Would you like to guess again? Enter y for yes: ")
-                if guess_again.lower() == "y":
+                guess_again = input("Correct! Would you like to guess again? Y/N: ")
+                if guess_again.lower() == "y" or guess_again.lower() == "yes":
                     print("Ok! Here is the board:")
                     game.print_board()
                 else:
                     break
             else:
+                print("Correct! Out of guesses.")
                 break
         else:
             if not game.in_progress:
@@ -177,7 +204,5 @@ while game.in_progress:
     # Toggle player's turn
     game.red_turn = not game.red_turn
 
-    print("Your turn is over! Switching to reader mode in 5 seconds.")
-    time.sleep(5)
-    for i in range(0, 100):
-        print(".")
+    # Switch to Reader mode
+    switch_modes(True)
